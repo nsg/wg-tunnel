@@ -1,0 +1,27 @@
+#!/bin/bash
+
+#
+# This script will bring ip a wireguard interface, add a IP and
+# a netmask to it. Package forwarding will also be enabled.
+#
+
+CONF=/etc/wireguard/wg-tunnel.conf
+WG_INTERFACE=${WG_INTERFACE:-wg0}
+
+test -e $CONF && . $CONF
+
+if [[ $1 == "up" ]]; then
+	ip link add dev ${WG_INTERFACE} type wireguard
+	ip address add dev ${WG_INTERFACE} $WG_NETWORK
+	wg setconf ${WG_INTERFACE} /etc/wireguard/${WG_INTERFACE}.conf
+	ip link set up dev ${WG_INTERFACE}
+	sysctl net.ipv4.ip_forward=1
+elif [[ $1 == "down" ]]; then
+	sysctl net.ipv4.ip_forward=0
+	ip link set down dev ${WG_INTERFACE}
+	ip address del dev ${WG_INTERFACE} $WG_NETWORK
+	ip link del dev ${WG_INTERFACE} type wireguard
+else
+	echo "Unkown command: ${1:-no-command-found}"
+	exit 1
+fi
