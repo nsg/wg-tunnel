@@ -10,17 +10,37 @@ WG_INTERFACE=${WG_INTERFACE:-wg0}
 
 test -e $CONF && . $CONF
 
+_route() {
+	local addremove=$1
+	local dest=$2
+	local gw=$3
+	local dev=$4
+
+	ip route $addremove $dest via $gw dev $dev
+}
+
+add_route() { _route add $@; }
+remove_route() { _route remove $@; }
+
 if [[ $1 == "up" ]]; then
 	ip link add dev ${WG_INTERFACE} type wireguard
 	ip address add dev ${WG_INTERFACE} $WG_NETWORK
 	wg setconf ${WG_INTERFACE} /etc/wireguard/${WG_INTERFACE}.conf
 	ip link set up dev ${WG_INTERFACE}
 	sysctl net.ipv4.ip_forward=1
+	for r in $WG_ROUTES; do
+		p="${r//:/ }"
+		add_route ${p%% *} ${p##* } ${WG_INTERFACE}
+	done
 elif [[ $1 == "down" ]]; then
 	sysctl net.ipv4.ip_forward=0
 	ip link set down dev ${WG_INTERFACE}
 	ip address del dev ${WG_INTERFACE} $WG_NETWORK
 	ip link del dev ${WG_INTERFACE} type wireguard
+	for r in $WG_ROUTES; do
+		p="${r//:/ }"
+		remove_route ${p%% *} ${p##* } ${WG_INTERFACE}
+	done
 else
 	echo "Unkown command: ${1:-no-command-found}"
 	exit 1
