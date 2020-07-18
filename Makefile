@@ -1,5 +1,5 @@
 
-install: service script
+install: script service
 	@echo installed!
 
 service:
